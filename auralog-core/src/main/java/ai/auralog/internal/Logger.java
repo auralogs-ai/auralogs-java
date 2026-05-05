@@ -18,7 +18,11 @@ public final class Logger {
   private final String environment;
   private final Consumer<LogEntry> sink;
   private final @Nullable Supplier<Map<String, Object>> globalMetadata;
-  private final AtomicBoolean globalMetadataWarned = new AtomicBoolean(false);
+
+  // Each warn-once flag covers a distinct failure mode so a first occurrence on one path is never
+  // silently swallowed because the other path already tripped its flag.
+  private final AtomicBoolean globalSupplierWarned = new AtomicBoolean(false);
+  private final AtomicBoolean perCallCycleWarned = new AtomicBoolean(false);
   private volatile String traceId;
 
   /** Backward-compatible constructor without {@code globalMetadata}. Used by existing tests. */
@@ -117,7 +121,7 @@ public final class Logger {
       try {
         Json.assertSerializable(perCall);
       } catch (Exception serializationFailure) {
-        warnOnce(
+        warnPerCallCycleOnce(
             "per-call metadata is not serializable by the Auralog JSON encoder; dropping metadata"
                 + " for this entry",
             serializationFailure);
@@ -135,7 +139,7 @@ public final class Logger {
     try {
       Json.assertSerializable(merged);
     } catch (Exception serializationFailure) {
-      warnOnce(
+      warnGlobalSupplierOnce(
           "globalMetadata produced a value the Auralog JSON encoder cannot serialize; dropping"
               + " globalMetadata for this entry",
           serializationFailure);
@@ -145,6 +149,10 @@ public final class Logger {
       try {
         Json.assertSerializable(perCall);
       } catch (Exception perCallFailure) {
+        warnPerCallCycleOnce(
+            "per-call metadata is not serializable by the Auralog JSON encoder; dropping metadata"
+                + " for this entry",
+            perCallFailure);
         return null;
       }
       return perCall;
@@ -166,7 +174,7 @@ public final class Logger {
       Object raw = supplier.get();
       if (raw == null) return null;
       if (raw instanceof CompletionStage) {
-        warnOnce(
+        warnGlobalSupplierOnce(
             "globalMetadata supplier returned a CompletionStage / CompletableFuture; the SDK"
                 + " requires synchronous suppliers and will not await. Cache async state on the sync"
                 + " side (e.g. via a thread-local).",
@@ -174,7 +182,7 @@ public final class Logger {
         return null;
       }
       if (!(raw instanceof Map)) {
-        warnOnce(
+        warnGlobalSupplierOnce(
             "globalMetadata supplier returned a non-Map value of type "
                 + raw.getClass().getName()
                 + "; expected Map<String, Object>",
@@ -185,15 +193,23 @@ public final class Logger {
       Map<String, Object> casted = (Map<String, Object>) raw;
       resolved = casted;
     } catch (Throwable supplierFailure) {
-      warnOnce(
+      warnGlobalSupplierOnce(
           "globalMetadata supplier threw; emitting entry without globalMetadata", supplierFailure);
       return null;
     }
     return resolved;
   }
 
-  private void warnOnce(String message, @Nullable Throwable cause) {
-    if (globalMetadataWarned.compareAndSet(false, true)) {
+  private void warnGlobalSupplierOnce(String message, @Nullable Throwable cause) {
+    warnOnce(globalSupplierWarned, message, cause);
+  }
+
+  private void warnPerCallCycleOnce(String message, @Nullable Throwable cause) {
+    warnOnce(perCallCycleWarned, message, cause);
+  }
+
+  private static void warnOnce(AtomicBoolean flag, String message, @Nullable Throwable cause) {
+    if (flag.compareAndSet(false, true)) {
       if (cause != null) {
         INTERNAL_LOG.log(System.Logger.Level.WARNING, message, cause);
       } else {
@@ -204,6 +220,11 @@ public final class Logger {
 
   // Visible for tests in the same package.
   boolean hasWarnedAboutGlobalMetadata() {
-    return globalMetadataWarned.get();
+    return globalSupplierWarned.get();
+  }
+
+  // Visible for tests in the same package.
+  boolean hasWarnedAboutPerCallCycle() {
+    return perCallCycleWarned.get();
   }
 }

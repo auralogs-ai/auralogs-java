@@ -193,6 +193,60 @@ class LoggerGlobalMetadataTest {
   }
 
   @Test
+  void perCallCycleStillWarnsAfterGlobalSupplierAlreadyWarned() {
+    // Direction A: global-supplier failure trips first, then a first-time per-call cycle must
+    // still produce its own warn (the two warn-once flags are independent).
+    List<LogEntry> out = new ArrayList<>();
+    Supplier<Map<String, Object>> throwing =
+        () -> {
+          throw new RuntimeException("supplier broken");
+        };
+    Logger log = new Logger("prod", out::add, null, throwing);
+
+    // First call: trips the global-supplier flag, per-call metadata is fine.
+    log.info("global-fails", Map.of("ok", "value"));
+    assertThat(log.hasWarnedAboutGlobalMetadata()).isTrue();
+    assertThat(log.hasWarnedAboutPerCallCycle()).isFalse();
+
+    // Second call: supplier still throws (already warned, silent), but per-call has a cycle —
+    // this must trip the per-call flag independently.
+    Map<String, Object> cyclic = new HashMap<>();
+    cyclic.put("self", cyclic);
+    log.info("per-call-cycle", cyclic);
+
+    assertThat(log.hasWarnedAboutPerCallCycle()).isTrue();
+  }
+
+  @Test
+  void globalSupplierStillWarnsAfterPerCallCycleAlreadyWarned() {
+    // Direction B: per-call cycle trips first (no globalMetadata in play), then later a logger
+    // configured with a failing supplier must still warn — but this requires sharing state across
+    // loggers, which we don't. So instead: on a single logger, induce a per-call cycle first
+    // (with no global supplier failure), then induce a global-supplier failure on a later call.
+    List<LogEntry> out = new ArrayList<>();
+    AtomicInteger callCount = new AtomicInteger();
+    Supplier<Map<String, Object>> conditionallyThrowing =
+        () -> {
+          if (callCount.incrementAndGet() == 1) {
+            return Map.of(); // first call: supplier returns empty -> per-call path runs alone.
+          }
+          throw new RuntimeException("supplier broken");
+        };
+    Logger log = new Logger("prod", out::add, null, conditionallyThrowing);
+
+    // First call: empty global -> per-call cycle path; trips per-call flag.
+    Map<String, Object> cyclic = new HashMap<>();
+    cyclic.put("self", cyclic);
+    log.info("per-call-cycle-first", cyclic);
+    assertThat(log.hasWarnedAboutPerCallCycle()).isTrue();
+    assertThat(log.hasWarnedAboutGlobalMetadata()).isFalse();
+
+    // Second call: supplier throws — must trip the global-supplier flag independently.
+    log.info("global-fails-second", null);
+    assertThat(log.hasWarnedAboutGlobalMetadata()).isTrue();
+  }
+
+  @Test
   void traceIdMetadataKeyStillExtractsAfterMerge() {
     List<LogEntry> out = new ArrayList<>();
     Supplier<Map<String, Object>> supplier = () -> Map.of("userId", "u1");
