@@ -97,4 +97,30 @@ class TransportTest {
     await().atMost(Duration.ofSeconds(2)).until(() -> wm.getAllServeEvents().size() >= 1);
     t.shutdown();
   }
+
+  @Test
+  void bufferDropsOldestWhenCapExceeded() {
+    stubFor(post("/v1/logs").willReturn(ok()));
+    Transport t = new Transport("k", url(), Duration.ofMinutes(10), 3);
+
+    t.send(entry(LogLevel.INFO, "first"));
+    t.send(entry(LogLevel.INFO, "second"));
+    t.send(entry(LogLevel.INFO, "third"));
+    // Two more pushes — the oldest two ("first" and "second") must be evicted.
+    t.send(entry(LogLevel.INFO, "fourth"));
+    t.send(entry(LogLevel.INFO, "fifth"));
+
+    t.flush();
+    assertThat(wm.getAllServeEvents()).hasSize(1);
+    String body = wm.getAllServeEvents().get(0).getRequest().getBodyAsString();
+    assertThat(body).contains("\"third\"").contains("\"fourth\"").contains("\"fifth\"");
+    assertThat(body).doesNotContain("\"first\"").doesNotContain("\"second\"");
+    t.shutdown();
+  }
+
+  @Test
+  void maxQueueSizeMustBePositive() {
+    org.assertj.core.api.Assertions.assertThatIllegalArgumentException()
+        .isThrownBy(() -> new Transport("k", url(), Duration.ofMinutes(10), 0));
+  }
 }

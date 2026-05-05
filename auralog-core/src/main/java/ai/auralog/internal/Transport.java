@@ -5,7 +5,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.time.Duration;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,28 +15,47 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 public final class Transport {
+  /** Default cap if a caller uses the legacy constructor that doesn't set one. */
+  static final int DEFAULT_MAX_QUEUE_SIZE = 1000;
+
   private final String apiKey;
   private final String endpoint;
   private final Duration flushInterval;
   private final HttpClient client;
-  private final List<LogEntry> buffer = new ArrayList<>();
+  private final int maxQueueSize;
+  private final Deque<LogEntry> buffer = new ArrayDeque<>();
   private final ReentrantLock lock = new ReentrantLock();
   private final Thread thread;
   private volatile boolean stopped = false;
 
   public Transport(String apiKey, String endpoint, Duration flushInterval) {
+    this(apiKey, endpoint, flushInterval, DEFAULT_MAX_QUEUE_SIZE);
+  }
+
+  public Transport(String apiKey, String endpoint, Duration flushInterval, int maxQueueSize) {
     this(
         apiKey,
         endpoint,
         flushInterval,
+        maxQueueSize,
         HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build());
   }
 
   // Package-private: tests inject a stub HttpClient when useful.
   Transport(String apiKey, String endpoint, Duration flushInterval, HttpClient client) {
+    this(apiKey, endpoint, flushInterval, DEFAULT_MAX_QUEUE_SIZE, client);
+  }
+
+  // Package-private: tests inject a stub HttpClient when useful.
+  Transport(
+      String apiKey, String endpoint, Duration flushInterval, int maxQueueSize, HttpClient client) {
+    if (maxQueueSize < 1) {
+      throw new IllegalArgumentException("maxQueueSize must be >= 1, got " + maxQueueSize);
+    }
     this.apiKey = apiKey;
     this.endpoint = stripTrailingSlash(endpoint);
     this.flushInterval = flushInterval;
+    this.maxQueueSize = maxQueueSize;
     this.client = client;
     this.thread = new Thread(this::run, "auralog-flush");
     this.thread.setDaemon(true);
@@ -68,7 +89,12 @@ public final class Transport {
     }
     lock.lock();
     try {
-      buffer.add(entry);
+      // Drop the oldest entries first when the cap would be exceeded. Bounding the buffer
+      // prevents the JVM heap from growing without limit if the ingest endpoint is unreachable.
+      while (buffer.size() >= maxQueueSize) {
+        buffer.pollFirst();
+      }
+      buffer.addLast(entry);
     } finally {
       lock.unlock();
     }
