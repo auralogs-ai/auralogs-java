@@ -1,6 +1,7 @@
 package ai.auralog.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -80,6 +81,40 @@ class LoggerTest {
     assertThat(out.get(0).traceId()).isEqualTo("override-456");
     assertThat(out.get(0).metadata()).containsEntry("extra", "data");
     assertThat(out.get(0).metadata()).doesNotContainKey("traceId");
+  }
+
+  @Test
+  void perCallMetadataCycleDoesNotStackOverflow() {
+    // Per-call metadata containing a self-reference must not crash the encoder. Before the fix
+    // this StackOverflowError'd inside Json.writeMap on the flush thread when no globalMetadata
+    // was configured, silently losing all subsequent telemetry.
+    List<LogEntry> out = new ArrayList<>();
+    Logger log = new Logger("prod", out::add, null);
+    Map<String, Object> cyclic = new HashMap<>();
+    cyclic.put("self", cyclic);
+
+    assertThatCode(() -> log.info("x", cyclic)).doesNotThrowAnyException();
+    // Entry is still emitted; the cyclic metadata is dropped to keep the wire payload safe.
+    assertThat(out).hasSize(1);
+    assertThat(out.get(0).metadata()).isNull();
+
+    // And the resulting LogEntry must encode without StackOverflowError.
+    Map<String, Object> wire = new HashMap<>();
+    wire.put("level", out.get(0).level().wireName());
+    wire.put("metadata", out.get(0).metadata());
+    assertThatCode(() -> Json.encode(wire)).doesNotThrowAnyException();
+  }
+
+  @Test
+  void perCallMetadataCycleWithGlobalMetadataDoesNotStackOverflow() {
+    // Same scenario but with a global supplier configured — the merge path must also defend.
+    List<LogEntry> out = new ArrayList<>();
+    Logger log = new Logger("prod", out::add, null, () -> Map.of("service", "checkout"));
+    Map<String, Object> cyclic = new HashMap<>();
+    cyclic.put("self", cyclic);
+
+    assertThatCode(() -> log.info("x", cyclic)).doesNotThrowAnyException();
+    assertThat(out).hasSize(1);
   }
 
   @Test

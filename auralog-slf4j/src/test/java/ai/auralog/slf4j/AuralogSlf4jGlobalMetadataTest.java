@@ -39,6 +39,7 @@ class AuralogSlf4jGlobalMetadataTest {
             .apiKey("k")
             .environment("test")
             .endpoint("http://localhost:" + wm.port())
+            .allowInsecureEndpoint(true)
             .flushInterval(Duration.ofMinutes(10))
             .captureErrors(false)
             .globalMetadata(
@@ -66,6 +67,7 @@ class AuralogSlf4jGlobalMetadataTest {
             .apiKey("k")
             .environment("test")
             .endpoint("http://localhost:" + wm.port())
+            .allowInsecureEndpoint(true)
             .flushInterval(Duration.ofMinutes(10))
             .captureErrors(false)
             .globalMetadata(Map.of("userId", "u1", "feature", "checkout"))

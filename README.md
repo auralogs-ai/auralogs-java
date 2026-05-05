@@ -66,15 +66,23 @@ log.info("user signed in {}", userId);
 log.error("payment failed", exception);
 ```
 
+The bridge defaults to forwarding `INFO` and above. Calls below the threshold short-circuit inside SLF4J and never reach the Auralog buffer. Override the threshold via the `auralog.slf4j.level` system property — accepted values are `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR` (case-insensitive):
+
+```bash
+java -Dauralog.slf4j.level=WARN -jar app.jar
+```
+
 ## Configuration
 
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `apiKey` | `String` | _required_ | Your Auralog project API key |
 | `environment` | `String` | `"production"` | e.g. `"production"`, `"staging"`, `"dev"` |
-| `endpoint` | `String` | `https://ingest.auralog.ai` | Ingest endpoint override |
+| `endpoint` | `String` | `https://ingest.auralog.ai` | Ingest endpoint override. Must be `https://`; non-`https` URIs are rejected unless `allowInsecureEndpoint(true)` is set. |
+| `allowInsecureEndpoint` | `boolean` | `false` | Permit non-`https` endpoint URIs. The SDK rejects plaintext endpoints by default so a misconfigured `endpoint` cannot silently downgrade every POST. Typically only used for local testing. |
 | `flushInterval` | `Duration` | `Duration.ofSeconds(5)` | Time between batched flushes (errors flush immediately) |
 | `captureErrors` | `boolean` | `true` | Capture uncaught exceptions via `Thread.UncaughtExceptionHandler` |
+| `maxQueueSize` | `int` | `1000` | Maximum number of buffered log entries between flushes. When the cap is reached the oldest entries are dropped first, keeping memory bounded if the ingest endpoint is unreachable for an extended period. |
 | `traceId` | `String` | _auto-generated_ | Custom trace ID for distributed tracing |
 | `globalMetadata` | `Supplier<Map<String, Object>>` _or_ `Map<String, Object>` | _none_ | Fields merged into every emitted log entry (direct API, SLF4J bridge, uncaught-error capture). Per-call metadata wins on key collision; merge is shallow. The supplier runs on every emit — keep it cheap. |
 

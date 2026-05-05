@@ -41,6 +41,7 @@ class AuralogTest {
             .apiKey("k")
             .environment("test")
             .endpoint("http://localhost:" + wm.port())
+            .allowInsecureEndpoint(true)
             .flushInterval(Duration.ofMinutes(10))
             .captureErrors(false)
             .build());
@@ -56,6 +57,7 @@ class AuralogTest {
             .apiKey("k")
             .environment("test")
             .endpoint("http://localhost:" + wm.port())
+            .allowInsecureEndpoint(true)
             .captureErrors(false)
             .build());
     assertThat(Auralog.getTraceId()).isNotNull().isNotEmpty();
@@ -68,6 +70,7 @@ class AuralogTest {
             .apiKey("k")
             .environment("test")
             .endpoint("http://localhost:" + wm.port())
+            .allowInsecureEndpoint(true)
             .captureErrors(false)
             .build());
     Auralog.setTraceId("custom-trace");
@@ -87,6 +90,7 @@ class AuralogTest {
             .apiKey("k")
             .environment("test")
             .endpoint("http://localhost:" + wm.port())
+            .allowInsecureEndpoint(true)
             .traceId("config-trace-123")
             .captureErrors(false)
             .build());
@@ -100,6 +104,7 @@ class AuralogTest {
             .apiKey("k")
             .environment("test")
             .endpoint("http://localhost:" + wm.port())
+            .allowInsecureEndpoint(true)
             .flushInterval(Duration.ofMinutes(10))
             .captureErrors(false)
             .build());

@@ -109,14 +109,29 @@ public final class Logger {
   private @Nullable Map<String, Object> mergeMetadata(@Nullable Map<String, Object> perCall) {
     Map<String, Object> resolved = resolveGlobalMetadata();
     if (resolved == null || resolved.isEmpty()) {
-      return (perCall == null || perCall.isEmpty()) ? null : perCall;
+      // Defend the encode path against cycles / non-serializable values in per-call metadata.
+      // assertSerializable's IdentityHashMap walk catches circular references that would otherwise
+      // StackOverflowError inside Json.writeMap / writeArray on the flush thread, silently losing
+      // all subsequent telemetry.
+      if (perCall == null || perCall.isEmpty()) return null;
+      try {
+        Json.assertSerializable(perCall);
+      } catch (Exception serializationFailure) {
+        warnOnce(
+            "per-call metadata is not serializable by the Auralog JSON encoder; dropping metadata"
+                + " for this entry",
+            serializationFailure);
+        return null;
+      }
+      return perCall;
     }
 
     LinkedHashMap<String, Object> merged = new LinkedHashMap<>(resolved);
     if (perCall != null) merged.putAll(perCall);
 
     // Serialization defense: if the merged metadata isn't shippable, drop globalMetadata for this
-    // entry and warn once.
+    // entry and warn once. The merged walk also covers per-call cycles since the per-call map is
+    // reachable from `merged`.
     try {
       Json.assertSerializable(merged);
     } catch (Exception serializationFailure) {
@@ -124,7 +139,15 @@ public final class Logger {
           "globalMetadata produced a value the Auralog JSON encoder cannot serialize; dropping"
               + " globalMetadata for this entry",
           serializationFailure);
-      return (perCall == null || perCall.isEmpty()) ? null : perCall;
+      // Fall back to per-call metadata only — but re-check it independently in case the cycle is
+      // on the per-call side.
+      if (perCall == null || perCall.isEmpty()) return null;
+      try {
+        Json.assertSerializable(perCall);
+      } catch (Exception perCallFailure) {
+        return null;
+      }
+      return perCall;
     }
 
     return merged;
