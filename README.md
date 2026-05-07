@@ -2,7 +2,7 @@
 
 Java SDK for [Auralog](https://auralog.ai) — agentic logging and application awareness.
 
-Auralog uses Claude as an on-call engineer: it monitors your logs and errors, alerts you when something's wrong, and opens fix PRs automatically.
+Auralog acts as an on-call engineer — powered by your choice of model (Claude, OpenAI, or any MCP-compatible LLM) — monitoring your logs and errors, alerting you when something's wrong, and opening fix PRs automatically.
 
 [![Maven Central](https://img.shields.io/maven-central/v/ai.auralog/auralog-core.svg?label=maven-central&color=blue)](https://central.sonatype.com/artifact/ai.auralog/auralog-core)
 [![provenance verified](https://img.shields.io/badge/provenance-verified-2dba4e?logo=sigstore&logoColor=white)](https://central.sonatype.com/artifact/ai.auralog/auralog-core)
