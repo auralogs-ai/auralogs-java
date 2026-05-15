@@ -4,8 +4,8 @@ plugins {
 }
 
 allprojects {
-    group = "ai.auralog"
-    version = "0.2.0"
+    group = "ai.auralogs"
+    version = "1.0.0"
 
     repositories {
         mavenCentral()
@@ -54,7 +54,7 @@ subprojects {
         signAllPublications()
 
         pom {
-            url.set("https://github.com/auralog-ai/auralog-java")
+            url.set("https://github.com/auralogs-ai/auralogs-java")
             licenses {
                 license {
                     name.set("The MIT License")
@@ -70,9 +70,9 @@ subprojects {
                 }
             }
             scm {
-                url.set("https://github.com/auralog-ai/auralog-java")
-                connection.set("scm:git:git://github.com/auralog-ai/auralog-java.git")
-                developerConnection.set("scm:git:ssh://github.com:auralog-ai/auralog-java.git")
+                url.set("https://github.com/auralogs-ai/auralogs-java")
+                connection.set("scm:git:git://github.com/auralogs-ai/auralogs-java.git")
+                developerConnection.set("scm:git:ssh://github.com:auralogs-ai/auralogs-java.git")
             }
         }
     }

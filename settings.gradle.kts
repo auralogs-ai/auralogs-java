@@ -1,3 +1,3 @@
-rootProject.name = "auralog-java"
+rootProject.name = "auralogs-java"
 
-include("auralog-core", "auralog-slf4j")
+include("auralogs-core", "auralogs-slf4j")
