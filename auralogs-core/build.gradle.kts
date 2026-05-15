@@ -8,7 +8,7 @@ mavenPublishing {
 dependencies {
     compileOnly("org.jspecify:jspecify:1.0.0")
 
-    testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.0.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.assertj:assertj-core:3.27.2")
     testImplementation("org.wiremock:wiremock-standalone:3.9.2")
