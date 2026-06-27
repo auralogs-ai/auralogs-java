@@ -15,9 +15,9 @@ Auralogs acts as an on-call engineer — powered by your choice of model (Claude
 
 ```kotlin
 dependencies {
-    implementation("ai.auralogs:auralogs-core:0.2.0")
+    implementation("ai.auralogs:auralogs-core:1.0.0")
     // Optional: stdlib SLF4J bridge — captures logs from Logback/Log4j2/libraries
-    implementation("ai.auralogs:auralogs-slf4j:0.2.0")
+    implementation("ai.auralogs:auralogs-slf4j:1.0.0")
 }
 ```
 
@@ -27,7 +27,7 @@ dependencies {
 <dependency>
     <groupId>ai.auralogs</groupId>
     <artifactId>auralogs-core</artifactId>
-    <version>0.2.0</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
