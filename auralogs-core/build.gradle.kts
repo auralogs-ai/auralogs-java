@@ -10,8 +10,8 @@ dependencies {
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testImplementation("org.assertj:assertj-core:3.27.2")
-    testImplementation("org.wiremock:wiremock-standalone:3.9.2")
-    testImplementation("org.awaitility:awaitility:4.2.2")
+    testImplementation("org.assertj:assertj-core:3.27.7")
+    testImplementation("org.wiremock:wiremock-standalone:3.13.2")
+    testImplementation("org.awaitility:awaitility:4.3.0")
     testImplementation("org.jspecify:jspecify:1.0.0")
 }

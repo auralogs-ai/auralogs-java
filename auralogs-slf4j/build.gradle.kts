@@ -7,13 +7,13 @@ mavenPublishing {
 
 dependencies {
     api(project(":auralogs-core"))
-    implementation("org.slf4j:slf4j-api:2.0.16")
+    implementation("org.slf4j:slf4j-api:2.0.18")
     compileOnly("org.jspecify:jspecify:1.0.0")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testImplementation("org.assertj:assertj-core:3.27.2")
-    testImplementation("org.wiremock:wiremock-standalone:3.9.2")
-    testImplementation("org.awaitility:awaitility:4.2.2")
-    testImplementation("org.slf4j:slf4j-api:2.0.16")
+    testImplementation("org.assertj:assertj-core:3.27.7")
+    testImplementation("org.wiremock:wiremock-standalone:3.13.2")
+    testImplementation("org.awaitility:awaitility:4.3.0")
+    testImplementation("org.slf4j:slf4j-api:2.0.18")
 }
